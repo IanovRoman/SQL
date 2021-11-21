@@ -1,0 +1,75 @@
+--task1
+--Корабли: Для каждого класса определите число кораблей этого класса, потопленных в сражениях. Вывести: класс и число потопленных кораблей.
+
+SELECT classes.class, COUNT(ships.ship)
+FROM classes
+  LEFT JOIN
+    (
+       SELECT outcomes.ship, ships.class
+       FROM outcomes
+       LEFT JOIN ships ON ships.name = outcomes.ship
+       WHERE outcomes.result = 'sunk'
+    ) AS ships ON ships.class = classes.class OR ships.ship = classes.class
+GROUP BY classes.class
+
+
+--task2
+--Корабли: Для каждого класса определите год, когда был спущен на воду первый корабль этого класса. Если год спуска на воду головного корабля неизвестен, определите минимальный год спуска на воду кораблей этого класса. Вывести: класс, год.
+
+SELECT classes.class, t.y
+FROM classes
+LEFT JOIN
+(SELECT class, MIN(launched) AS y
+FROM ships
+GROUP BY class
+) AS t ON classes.class = t.class
+
+--task3
+--Корабли: Для классов, имеющих потери в виде потопленных кораблей и не менее 3 кораблей в базе данных, вывести имя класса и число потопленных кораблей.
+
+SELECT class, COUNT(ship) count_sunked
+FROM (SELECT name, class FROM ships
+      UNION
+      SELECT ship, ship FROM outcomes) t
+LEFT JOIN outcomes ON name = ship AND result = 'sunk'
+GROUP BY class
+HAVING COUNT(ship) > 0 AND COUNT(*) > 2
+
+--task4
+--Корабли: Найдите названия кораблей, имеющих наибольшее число орудий среди всех кораблей такого же водоизмещения (учесть корабли из таблицы Outcomes).
+SELECT name, numguns
+FROM (SELECT Outcomes.ship AS name, numGuns, displacement
+ FROM Outcomes INNER JOIN 
+ Classes ON Outcomes.ship = Classes.class AND 
+ Outcomes.ship NOT IN (SELECT name 
+ FROM Ships
+ ) 
+ UNION
+ SELECT Ships.name AS name, numGuns, displacement 
+ FROM Ships INNER JOIN 
+ Classes ON Ships.class = Classes.class 
+ ) OS INNER JOIN 
+ (SELECT MAX(numGuns) AS MaxNumGuns, displacement
+ FROM Outcomes INNER JOIN 
+ Classes ON Outcomes.ship = Classes.class AND 
+ Outcomes.ship NOT IN (SELECT name 
+ FROM Ships
+ ) 
+ GROUP BY displacement
+ UNION
+ SELECT MAX(numGuns) AS MaxNumGuns, displacement
+ FROM Ships INNER JOIN 
+ Classes ON Ships.class = Classes.class
+ GROUP BY displacement
+ ) GD ON OS.numGuns = GD.MaxNumGuns AND 
+ OS.displacement = GD.displacement
+
+--task5
+--Компьютерная фирма: Найдите производителей принтеров, которые производят ПК с наименьшим объемом RAM и с самым быстрым процессором среди всех ПК, имеющих наименьший объем RAM. Вывести: Maker
+
+with maker_printer as (Select maker, ram, speed from product
+join pc on pc.model=product.model
+where type='PC' and maker in
+(select maker from product where type='Printer')and ram=(select min(ram) from pc))
+select distinct maker from maker_printer
+where speed=(select max(speed) from maker_printer)
